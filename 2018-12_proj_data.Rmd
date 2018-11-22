@@ -47,9 +47,9 @@ new_t = t %>%
   filter(subject != "Subject") %>%
   select(-topic)
 new_t[,-(1:2)] = apply(new_t[,-(1:2)], 2, as.numeric)
-```
-
-```{r sex_and_age}
+####```
+####
+####```{r sex_and_age}
 new_sex_and_age = new_t %>% filter(subject == "Sex and Age")
 pops = new_sex_and_age
 for(i in 3:ncol(pops)){
@@ -57,27 +57,27 @@ for(i in 3:ncol(pops)){
 }
 sex_and_age = which(new_t$subject == "Sex and Age")
 new_t[sex_and_age,] = pops
-```
-
-```{r race}
+####```
+####
+####```{r race}
 new_race = new_t %>% filter(subject == "Race")
 for(i in 3:ncol(new_race)){
   new_race[,i] = c(new_race[1,i], new_race[-1,i]/new_race[1,i])
 }
 race = which(new_t$subject == "Race")
 new_t[race,] = new_race
-```
-
-```{r hispanic}
+####```
+####
+####```{r hispanic}
 new_hisp = new_t %>% filter(subject == "Hispanic or Latino and Race")
 for(i in 3:ncol(new_hisp)){
   new_hisp[,i] = c(new_hisp[1,i], new_hisp[-1,i]/new_race[1,i])
 }
 hisp = which(new_t$subject == "Hispanic or Latino and Race")
 new_t[hisp,] = new_hisp
-```
-
-```{r veterans}
+####```
+####
+####```{r veterans}
 new_vet = new_t %>% filter(subject == "Veteran Status")
 for(i in 3:ncol(new_vet)){
   total = new_vet[1,i]
@@ -85,9 +85,9 @@ for(i in 3:ncol(new_vet)){
 }
 vet = which(new_t$subject == "Veteran Status")
 new_t[vet,] = new_vet
-``` 
-
-```{r employment}
+####``` 
+####
+####```{r employment}
 new_emp = new_t %>% filter(subject == "Employment Status")
 for(i in 3:ncol(new_emp)){
   total = new_emp[1,i]
@@ -95,9 +95,9 @@ for(i in 3:ncol(new_emp)){
 }
 emp = which(new_t$subject == "Employment Status")
 new_t[emp,] = new_emp
-```
-
-```{r Occupation}
+####```
+####
+####```{r Occupation}
 new_occ = new_t %>% filter(subject == "Occupation")
 for(i in 3:ncol(new_occ)){
   total = new_occ[1,i]
@@ -105,9 +105,9 @@ for(i in 3:ncol(new_occ)){
 }
 occ = which(new_t$subject == "Occupation")
 new_t[occ,] = new_occ
-```
-
-```{r industry}
+####```
+####
+####```{r industry}
 new_ind = new_t %>% filter(subject == "Industry")
 for(i in 3:ncol(new_ind)){
   total = new_ind[1,i]
@@ -115,9 +115,9 @@ for(i in 3:ncol(new_ind)){
 }
 ind = which(new_t$subject == "Industry")
 new_t[ind,] = new_ind
-```
-
-```{r class}
+####```
+####
+####```{r class}
 new_cla = new_t%>%filter(subject == "Class of Worker")
 for(i in 3:ncol(new_cla)){
   tot = new_cla[1,i]
@@ -125,9 +125,9 @@ for(i in 3:ncol(new_cla)){
 }
 cla = which(new_t$subject == "Class of Worker")
 new_t[cla,] = new_cla
-```
-
-```{r house_occu}
+####```
+####
+####```{r house_occu}
 new_hou = new_t %>% filter(subject == "Housing Occupancy")
 for(i in 3:ncol(new_hou)){
   tot = new_hou[1,i]
@@ -135,9 +135,9 @@ for(i in 3:ncol(new_hou)){
 }
 hou = which(new_t$subject == "Housing Occupancy")
 new_t[hou,] = new_hou
-```
-
-```{r house_tenure}
+####```
+####
+####```{r house_tenure}
 new_ten = new_t %>% filter(subject == "Housing Tenure")
 for(i in 3:ncol(new_ten)){
   tot = new_ten[1,i]
@@ -145,9 +145,9 @@ for(i in 3:ncol(new_ten)){
 }
 ten = which(new_t$subject == "Housing Tenure")
 new_t[ten,] = new_ten
-```
-
-```{r value}
+####```
+####
+####```{r value}
 new_val = new_t %>% filter(subject == "Value")
 for(i in 3:ncol(new_val)){
   tot = new_val[1,i]
@@ -155,9 +155,9 @@ for(i in 3:ncol(new_val)){
 }
 val = which(new_t$subject == "Value")
 new_t[val,] = new_val
-```
-
-```{r rent}
+####```
+####
+####```{r rent}
 new_ren = new_t %>% filter(subject == "Gross Rent")
 for(i in 3:ncol(new_ren)){
   tot = new_ren[1,i]
@@ -165,9 +165,9 @@ for(i in 3:ncol(new_ren)){
 }
 ren = which(new_t$subject == "Gross Rent")
 new_t[ren,] = new_ren
-```
-
-```{r income_and_ben}
+####```
+####
+####```{r income_and_ben}
 new_inc = new_t %>% filter(str_detect(subject, "Income and Benefits"))
 new_inc$subject = "Income and Benefits"
 for(i in 3:ncol(new_inc)){
@@ -176,9 +176,9 @@ for(i in 3:ncol(new_inc)){
 }
 inc = which(str_detect(new_t$subject, "Income and Benefits"))
 new_t[inc,] = new_inc
-```
-
-```{r health_insurance}
+####```
+####
+####```{r health_insurance}
 new_ins = new_t %>% filter(subject == "Health Insurance Coverage")
 for(i in 3:ncol(new_ins)){
   tot1 = new_ins[1,i]
@@ -188,9 +188,9 @@ for(i in 3:ncol(new_ins)){
 }
 ins = which(new_t$subject == "Health Insurance Coverage")
 new_t[ins,] = new_ins
-```
-
-```{r poverty}
+####```
+####
+####```{r poverty}
 new_pov = new_t %>% filter(str_detect(subject, "Poverty"))
 new_pov$subject = "Poverty"
 for(i in 3:ncol(new_pov)){
@@ -198,9 +198,9 @@ for(i in 3:ncol(new_pov)){
 }
 pov = which(str_detect(new_t$subject, "Poverty"))
 new_t[pov,] = new_pov
-```
-
-```{r school_enrollment}
+####```
+####
+####```{r school_enrollment}
 new_enr = new_t %>% filter(subject == "School Enrollment")
 for(i in 3:ncol(new_enr)){
   tot = new_enr[1,i]
@@ -208,9 +208,9 @@ for(i in 3:ncol(new_enr)){
 }
 enr = which(new_t$subject == "School Enrollment")
 new_t[enr,] = new_enr
-```
-
-```{r edu_attainment}
+####```
+####
+####```{r edu_attainment}
 new_edu = new_t %>% filter(subject == "Educational Attainment")
 for(i in 3:ncol(new_edu)){
   tot = new_edu[1,i]
@@ -219,9 +219,9 @@ for(i in 3:ncol(new_edu)){
 }
 edu = which(new_t$subject == "Educational Attainment")
 new_t[edu,] = new_edu
-```
-
-```{r paid_employees}
+####```
+####
+####```{r paid_employees}
 new_pay = new_t %>% filter(subject == "Paid employees for pay period including March 12")
 for (i in 3:ncol(new_pay)) {
   tot = new_pay[1,i]
@@ -229,6 +229,29 @@ for (i in 3:ncol(new_pay)) {
 }
 pay = which(new_t$subject == "Paid employees for pay period including March 12")
 new_t[pay,] = new_pay
+####```
+####
+####```{r annual_payroll}
+new_pan = new_t %>% filter(subject == "Annual payroll ($1,000)")
+for(i in 3:ncol(new_pan)){
+  tot = new_pan[1,i]
+  new_pan[-1,i] = new_pan[-1,i]/tot
+}
+pan = which(new_t$subject == "Annual payroll ($1,000)")
+new_t[pan,] = new_pan
+###
+###### subject == "Total Establishments"
+#####
+new_est = new_t %>% filter(subject == "Total Establishments")
+for(i in 3:ncol(new_est)){
+  tot = new_est[1,i]
+  new_est[-1,i] = new_est[-1,i]/tot
+}
+est = which(new_t$subject == "Total Establishments")
+new_t[est,] = new_est
+
+excess_totals = -c(20,29,36,38,53,67,102,115)
+full_t = new_t[excess_totals,]
 ```
 
 nominees: http://clerk.house.gov/member_info/election.aspx
