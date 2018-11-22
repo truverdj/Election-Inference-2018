@@ -17,7 +17,11 @@ cand = read.csv("cand_2018.csv", stringsAsFactors = FALSE)
 house = cand %>%
   filter(Cand_Office == "H") %>%
   filter(Cand_Party_Affiliation == "DEM")
-
+states = lapply(state.abb, function(st){
+  filename = paste0(st, "_all.csv")
+  read.csv(filename, stringsAsFactors = FALSE)
+})
+names(states) = state.abb
 ```
 
 nominees: http://clerk.house.gov/member_info/election.aspx
