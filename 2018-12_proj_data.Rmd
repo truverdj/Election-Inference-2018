@@ -12,7 +12,6 @@ library(stringr)
 ```
 
 ```{r}
-NC = read.csv("NC_all.csv")
 cand = read.csv("cand_2018.csv", stringsAsFactors = FALSE)
 house = cand %>%
   filter(Cand_Office == "H") %>%
@@ -22,6 +21,24 @@ states = lapply(state.abb, function(st){
   read.csv(filename, stringsAsFactors = FALSE)
 })
 names(states) = state.abb
+```
+
+```{r}
+t = states[["NC"]]
+names_t = names(t)
+not_moe = !str_detect(names_t, "MOE")
+t = t[,not_moe]
+districts = names(t)
+newnames = str_remove(districts, ".Estimate") %>%
+  str_remove(., "District.") %>%
+  paste0("NC_", .)
+colnames(t) = newnames
+colnames(t)[1:3] = c("topic", "subject", "title")
+new_t = t %>%
+  filter(subject != "Selected Monthly Owner Costs(SMOC)") %>%
+  filter(subject != "Place of Birth") %>%
+  filter(subject != "Ancestry") %>%
+  filter(sucject != "Disability Status of the Civilian Noninstitutionalized Population") 
 ```
 
 nominees: http://clerk.house.gov/member_info/election.aspx
