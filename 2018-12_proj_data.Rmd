@@ -1,0 +1,29 @@
+---
+title: "Data Sources"
+author: "Daniel Truver"
+date: "11/6/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(dplyr)
+library(stringr)
+```
+
+```{r}
+NC = read.csv("NC_all.csv")
+cand = read.csv("cand_2018.csv", stringsAsFactors = FALSE)
+house = cand %>%
+  filter(Cand_Office == "H") %>%
+  filter(Cand_Party_Affiliation == "DEM")
+
+```
+
+nominees: http://clerk.house.gov/member_info/election.aspx
+
+https://www.census.gov/mycd/
+
+https://www.fec.gov/data/advanced/?tab=candidates
+
+have to JAGS
