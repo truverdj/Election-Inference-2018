@@ -91,9 +91,144 @@ new_t[vet,] = new_vet
 new_emp = new_t %>% filter(subject == "Employment Status")
 for(i in 3:ncol(new_emp)){
   total = new_emp[1,i]
-  exempt = NULL
-  new_emp[-exempt,i] = c(total, new_emp[-c(1,17),i]/total)
+  new_emp[-9,i] = c(total, new_emp[-c(1,9),i]/total)
 }
+emp = which(new_t$subject == "Employment Status")
+new_t[emp,] = new_emp
+```
+
+```{r Occupation}
+new_occ = new_t %>% filter(subject == "Occupation")
+for(i in 3:ncol(new_occ)){
+  total = new_occ[1,i]
+  new_occ[,i] = c(total, new_occ[-1,i]/total)
+}
+occ = which(new_t$subject == "Occupation")
+new_t[occ,] = new_occ
+```
+
+```{r industry}
+new_ind = new_t %>% filter(subject == "Industry")
+for(i in 3:ncol(new_ind)){
+  total = new_ind[1,i]
+  new_ind[,i] = c(total, new_ind[-1,i]/total)
+}
+ind = which(new_t$subject == "Industry")
+new_t[ind,] = new_ind
+```
+
+```{r class}
+new_cla = new_t%>%filter(subject == "Class of Worker")
+for(i in 3:ncol(new_cla)){
+  tot = new_cla[1,i]
+  new_cla[,i] = c(tot, new_cla[-1,i]/tot)
+}
+cla = which(new_t$subject == "Class of Worker")
+new_t[cla,] = new_cla
+```
+
+```{r house_occu}
+new_hou = new_t %>% filter(subject == "Housing Occupancy")
+for(i in 3:ncol(new_hou)){
+  tot = new_hou[1,i]
+  new_hou[-(4:5),i] = c(tot, new_hou[-c(1,4:5),i]/tot)
+}
+hou = which(new_t$subject == "Housing Occupancy")
+new_t[hou,] = new_hou
+```
+
+```{r house_tenure}
+new_ten = new_t %>% filter(subject == "Housing Tenure")
+for(i in 3:ncol(new_ten)){
+  tot = new_ten[1,i]
+  new_ten[-(4:5),i] = c(tot, new_ten[-c(1,4:5),i]/tot)
+}
+ten = which(new_t$subject == "Housing Tenure")
+new_t[ten,] = new_ten
+```
+
+```{r value}
+new_val = new_t %>% filter(subject == "Value")
+for(i in 3:ncol(new_val)){
+  tot = new_val[1,i]
+  new_val[-10,i] = c(tot, new_val[-c(1,10),i]/tot)
+}
+val = which(new_t$subject == "Value")
+new_t[val,] = new_val
+```
+
+```{r rent}
+new_ren = new_t %>% filter(subject == "Gross Rent")
+for(i in 3:ncol(new_ren)){
+  tot = new_ren[1,i]
+  new_ren[-9,i] = c(tot, new_ren[-c(1,9),i]/tot)
+}
+ren = which(new_t$subject == "Gross Rent")
+new_t[ren,] = new_ren
+```
+
+```{r income_and_ben}
+new_inc = new_t %>% filter(str_detect(subject, "Income and Benefits"))
+new_inc$subject = "Income and Benefits"
+for(i in 3:ncol(new_inc)){
+  tot = new_inc[1,i]
+  new_inc[-(12:13),i] = c( tot, new_inc[-c(1,12:13),i]/tot )
+}
+inc = which(str_detect(new_t$subject, "Income and Benefits"))
+new_t[inc,] = new_inc
+```
+
+```{r health_insurance}
+new_ins = new_t %>% filter(subject == "Health Insurance Coverage")
+for(i in 3:ncol(new_ins)){
+  tot1 = new_ins[1,i]
+  tot2 = new_ins[6,i]
+  new_ins[-(6:7),i] = c( tot1, new_ins[-c(1,6:7),i]/tot1 )
+  new_ins[7,i] = new_ins[7,i]/tot1
+}
+ins = which(new_t$subject == "Health Insurance Coverage")
+new_t[ins,] = new_ins
+```
+
+```{r poverty}
+new_pov = new_t %>% filter(str_detect(subject, "Poverty"))
+new_pov$subject = "Poverty"
+for(i in 3:ncol(new_pov)){
+  new_pov[,i] = new_pov[,i]/100
+}
+pov = which(str_detect(new_t$subject, "Poverty"))
+new_t[pov,] = new_pov
+```
+
+```{r school_enrollment}
+new_enr = new_t %>% filter(subject == "School Enrollment")
+for(i in 3:ncol(new_enr)){
+  tot = new_enr[1,i]
+  new_enr[-1,i] = new_enr[-1,i]/tot
+}
+enr = which(new_t$subject == "School Enrollment")
+new_t[enr,] = new_enr
+```
+
+```{r edu_attainment}
+new_edu = new_t %>% filter(subject == "Educational Attainment")
+for(i in 3:ncol(new_edu)){
+  tot = new_edu[1,i]
+  new_edu[2:8,i] = new_edu[2:8,i]/tot
+  new_edu[9:10,i] = new_edu[9:10,i]/10
+}
+edu = which(new_t$subject == "Educational Attainment")
+new_t[edu,] = new_edu
+```
+
+```{r paid_employees}
+new_pay = new_t %>% filter(subject == "Paid employees for pay period including March 12")
+for (i in 3:ncol(new_pay)) {
+  tot = new_pay[1,i]
+  new_pay[-1,i] = new_pay[-1,i]/tot
+}
+pay = which(new_t$subject == "Paid employees for pay period including March 12")
+new_t[pay,] = new_pay
 ```
 
 nominees: http://clerk.house.gov/member_info/election.aspx
