@@ -44,7 +44,24 @@ new_t = t %>%
   filter(subject != "Year Householder Moved into Unit") %>%
   filter(subject != "Mortgage Status") %>%
   filter(subject != "") %>%
-  filter(subject != "Subject")
+  filter(subject != "Subject") %>%
+  select(-topic)
+new_t[,-(1:2)] = apply(new_t[,-(1:2)], 2, as.numeric)
+```
+
+```{r sex_and_age}
+new_sex_and_age = new_t %>% 
+  filter(subject == "Sex and Age")
+pops = new_sex_and_age
+for(i in 3:ncol(pops)){
+  pops[-17,i] = c(pops[1,i], pops[-c(1,17),i]/pops[1,i])
+}
+sex_and_age = which(new_t$subject == "Sex and Age")
+new_t[sex_and_age,] = pops
+```
+
+```{r race}
+
 ```
 
 nominees: http://clerk.house.gov/member_info/election.aspx
