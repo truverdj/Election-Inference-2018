@@ -24,14 +24,18 @@ names(states) = state.abb
 ```
 
 ```{r}
-t = states[["NC"]]
+# st = "AK"
+if(!file.exists("census_districts.Rdata")){
+new_states = lapply(state.abb, function(st){
+prefix = paste0(st,"_")
+t = states[[st]]
 names_t = names(t)
 not_moe = !str_detect(names_t, "MOE")
 t = t[,not_moe]
 districts = names(t)
 newnames = str_remove(districts, ".Estimate") %>%
   str_remove(., "District.") %>%
-  paste0("NC_", .)
+  paste0(prefix, .)
 colnames(t) = newnames
 colnames(t)[1:3] = c("topic", "subject", "title")
 new_t = t %>%
@@ -46,7 +50,11 @@ new_t = t %>%
   filter(subject != "") %>%
   filter(subject != "Subject") %>%
   select(-topic)
-new_t[,-(1:2)] = apply(new_t[,-(1:2)], 2, as.numeric)
+if(ncol(new_t) > 3){
+  new_t[,-(1:2)] = apply(new_t[,-(1:2)], 2, as.numeric) 
+} else {
+  new_t[,-(1:2)] = as.numeric(new_t[,-(1:2)])
+}
 ####```
 ####
 ####```{r sex_and_age}
@@ -252,6 +260,13 @@ new_t[est,] = new_est
 
 excess_totals = -c(20,29,36,38,53,67,102,115)
 full_t = new_t[excess_totals,]
+})
+names(new_states) = state.abb
+
+save(new_states, file = "census_districts.Rdata")
+} else {
+  load("census_districts.Rdata")
+}
 ```
 
 nominees: http://clerk.house.gov/member_info/election.aspx
