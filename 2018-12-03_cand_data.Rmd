@@ -18,6 +18,76 @@ house = cand %>%
   filter(Cand_Office == "H") %>%
   filter(Cand_Party_Affiliation == "DEM") %>%
   select(-Link_Image) %>%
-  mutate(Cand_Name = tolower(Cand_Name))
-
+  mutate(Cand_Name = tolower(Cand_Name)) 
+house = house[order(house$Cand_Office_St),]
+page = read_html("https://www.nytimes.com/interactive/2018/11/06/us/elections/results-house-elections.html")
+if(!file.exists("nyt_calls.Rdata")){
+table1 = page %>%
+  html_node(xpath = "//*[@id=\"eln-election-page\"]/div/div[5]/div[3]/div[2]/div[1]/table") %>%
+  html_table()
+table2 = page %>%
+  html_node(xpath = "//*[@id=\"eln-election-page\"]/div/div[5]/div[3]/div[2]/div[2]/table") %>%
+  html_table()
+table3 = page %>% 
+  html_node(xpath = "//*[@id=\"eln-election-page\"]/div/div[5]/div[3]/div[2]/div[3]/table") %>%
+  html_table()
+table4 = page %>%
+  html_node(xpath = "//*[@id=\"eln-election-page\"]/div/div[5]/div[3]/div[2]/div[4]/table") %>%
+  html_table()
+table5 = page %>%
+  html_node(xpath = "//*[@id=\"eln-election-page\"]/div/div[5]/div[3]/div[2]/div[5]/table") %>%
+  html_table()
+nyt_calls = rbind(table1, table2, table3, table4, table5)
+save(nyt_calls, file = "nyt_calls.Rdata")
+} else {
+  load("nyt_calls.Rdata")
+}
 ```
+
+```{r convert_proportion}
+for(i in 1:ncol(nyt_calls)){
+  nyt_calls[,i] = str_remove_all(nyt_calls[,i], "%")
+}
+for(i in 2:ncol(nyt_calls)){
+  t = nyt_calls[,i]
+  t_new = unlist(lapply(t, function(x){
+    ifelse(x == "Unc.", -1, as.numeric(str_remove(x, "%"))/100)
+  }))
+  nyt_calls[,i] = t_new
+}
+```
+
+```{r usable_names}
+district = nyt_calls$District
+dis_letter = str_extract(district, "\\D+")
+dis_atLarge = !str_detect(district, "\\d")
+dis_num = str_extract(district, "\\d+")
+dis_num[is.na(dis_num)] = ".At.Large"
+dis_num[!str_detect(dis_num, "\\d\\d")] = paste0("0",dis_num[!str_detect(dis_num, "\\d\\d")])
+dis_st_pre = tolower(str_remove_all(dis_letter, "\\.|\\s"))
+dis_st = unlist(lapply(dis_st_pre, function(ch){
+  if(ch == "ala"){"alab"} 
+  else if (ch == "wva"){"wv"}
+  else if (ch == "fla"){"fl"}
+  else if (ch == "kan"){"ks"}
+  else if (ch == "miss"){"ms"}
+  else if (ch == "mont"){"mt"}
+  else {ch}
+}))
+st_test_ab = tolower(state.abb)
+st_test_fu = tolower(state.name)
+t = lapply(1:435, function(i){
+  totest = dis_st[i]
+  test_ab = which(str_detect(st_test_ab, totest))
+  if(length(test_ab) > 0){
+    test_ab
+  } else {
+    test_fu = which(str_detect(st_test_fu, totest))
+    test_fu
+  }
+})
+dis_ab = state.abb[unlist(t)]
+nyt_calls$State = dis_ab
+nyt_calls$Num = dis_num
+```
+
