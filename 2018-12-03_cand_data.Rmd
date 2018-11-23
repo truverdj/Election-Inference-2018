@@ -19,4 +19,5 @@ house = cand %>%
   filter(Cand_Party_Affiliation == "DEM") %>%
   select(-Link_Image) %>%
   mutate(Cand_Name = tolower(Cand_Name))
+
 ```
