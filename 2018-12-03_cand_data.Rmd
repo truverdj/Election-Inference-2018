@@ -1,0 +1,22 @@
+---
+title: "Candidate Data"
+author: "Daniel Truver"
+date: "11/23/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(dplyr)
+library(stringr)
+library(rvest)
+```
+
+```{r}
+cand = read.csv("cand_2018.csv", stringsAsFactors = FALSE)
+house = cand %>%
+  filter(Cand_Office == "H") %>%
+  filter(Cand_Party_Affiliation == "DEM") %>%
+  select(-Link_Image) %>%
+  mutate(Cand_Name = tolower(Cand_Name))
+```
