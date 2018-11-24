@@ -185,3 +185,6 @@ t
 names(new_peeps) = state.abb
 ```
 
+```{r, echo=FALSE, eval=FALSE}
+# this block runs everything else in markdown
+```

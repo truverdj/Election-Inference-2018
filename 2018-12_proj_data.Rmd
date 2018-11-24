@@ -269,6 +269,10 @@ save(new_states, file = "census_districts.Rdata")
 }
 ```
 
+```{r, echo=FALSE, eval=FALSE}
+# this block runs everything else in markdown
+```
+
 nominees: http://clerk.house.gov/member_info/election.aspx
 
 https://www.census.gov/mycd/
