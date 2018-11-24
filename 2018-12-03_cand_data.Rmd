@@ -13,15 +13,8 @@ library(rvest)
 ```
 
 ```{r}
-cand = read.csv("cand_2018.csv", stringsAsFactors = FALSE)
-house = cand %>%
-  filter(Cand_Office == "H") %>%
-  filter(Cand_Party_Affiliation == "DEM") %>%
-  select(-Link_Image) %>%
-  mutate(Cand_Name = tolower(Cand_Name)) 
-house = house[order(house$Cand_Office_St),]
-page = read_html("https://www.nytimes.com/interactive/2018/11/06/us/elections/results-house-elections.html")
 if(!file.exists("nyt_calls.Rdata")){
+  page = read_html("https://www.nytimes.com/interactive/2018/11/06/us/elections/results-house-elections.html")
 table1 = page %>%
   html_node(xpath = "//*[@id=\"eln-election-page\"]/div/div[5]/div[3]/div[2]/div[1]/table") %>%
   html_table()
@@ -44,7 +37,10 @@ save(nyt_calls, file = "nyt_calls.Rdata")
 }
 ```
 
-```{r convert_proportion}
+
+```{r usable_names}
+clean_nyt = function(df){
+  nyt_calls = df
 for(i in 1:ncol(nyt_calls)){
   nyt_calls[,i] = str_remove_all(nyt_calls[,i], "%")
 }
@@ -55,9 +51,6 @@ for(i in 2:ncol(nyt_calls)){
   }))
   nyt_calls[,i] = t_new
 }
-```
-
-```{r usable_names}
 district = nyt_calls$District
 dis_letter = str_extract(district, "\\D+")
 dis_atLarge = !str_detect(district, "\\d")
@@ -89,5 +82,84 @@ t = lapply(1:435, function(i){
 dis_ab = state.abb[unlist(t)]
 nyt_calls$State = dis_ab
 nyt_calls$Num = dis_num
+return(nyt_calls)
+}
+new_nyt_calls = clean_nyt(df = nyt_calls)
+```
+
+```{r}
+if(!file.exists("nyt_calls2016.Rdata")){
+  page2 = read_html("https://www.nytimes.com/elections/2016/results/house")
+table1 = page2 %>%
+  html_node(xpath = "//*[@id=\"eln-election-page\"]/div/div[5]/div/div[2]/div[1]/table") %>%
+  html_table()
+table2 = page2 %>%
+  html_node(xpath = "//*[@id=\"eln-election-page\"]/div/div[5]/div/div[2]/div[2]/table") %>%
+  html_table()
+table3 = page2 %>% 
+  html_node(xpath = "//*[@id=\"eln-election-page\"]/div/div[5]/div/div[2]/div[3]/table") %>%
+  html_table()
+table4 = page2 %>%
+  html_node(xpath = "//*[@id=\"eln-election-page\"]/div/div[5]/div/div[2]/div[4]/table") %>%
+  html_table()
+table5 = page2 %>%
+  html_node(xpath = "//*[@id=\"eln-election-page\"]/div/div[5]/div/div[2]/div[5]/table") %>%
+  html_table()
+nyt_calls2016 = rbind(table1, table2, table3, table4, table5)
+save(nyt_calls2016, file = "nyt_calls2016.Rdata")
+} else {
+  load("nyt_calls2016.Rdata")
+}
+new_nyt_calls2016 = clean_nyt(df = nyt_calls2016)
+```
+
+```{r}
+cand = read.csv("cand_2018.csv", stringsAsFactors = FALSE)
+house = cand %>%
+  filter(Cand_Office == "H") %>%
+  select(-Link_Image) %>%
+  mutate(Cand_Name = tolower(Cand_Name)) 
+house = house[order(house$Cand_Office_St),]
+house_mod = house %>%
+  filter(Total_Disbursement > 0) %>%
+  mutate(Coverage_End_Date = as.Date(Coverage_End_Date, "%m/%d/%Y")) %>%
+  select(Cand_Name, Cand_Id, Cand_Office_St, Cand_Office_Dist, Cand_Party_Affiliation,
+         Cand_Incumbent_Challenger_Open_Seat, Total_Disbursement, Coverage_End_Date)
+if(!file.exists("peeps.Rdata")){
+wiki_page = read_html("https://en.wikipedia.org/wiki/United_States_House_of_Representatives_elections,_2018#Alabama")
+test_xpath = paste0("//*[@id=\"mw-content-text\"]/div/table[",1:50+12,"]")
+test = lapply(test_xpath, function(x_path){
+  wiki_page %>%
+    html_node(xpath = x_path) %>%
+    html_table(fill = TRUE)
+})
+names(test) = state.abb
+peeps = test
+save(peeps, file = "peeps.Rdata")
+} else {
+  load("peeps.Rdata")
+}
+```
+
+```{r}
+# new_peeps = lapply(state.abb, function(st){
+t = peeps[[st]]
+t = t[-1,]
+names(t)[2] = "district_numbers"
+names(t)[3] = "incumbent_name"
+names(t)[4] = "incumbent_party"
+t_names = t$Candidates
+t_first = str_extract(t_names, "^(.+?)\\[")
+t_second = str_extract(t_names, "\\].+\\[")
+t_first_let = str_remove_all(t_first, "[^a-zA-Z\\s]+")
+t_second_let = str_remove_all(t_second, "[^a-zA-Z\\s]+")
+t$cand1 = t_first_let
+t$cand2 = t_second_let
+t = t %>% select(District, cand1, cand2)
+t$num = str_extract(t$District, "\\d+")
+t$District = str_remove_all(t$District, "\\s\\d+")
+
+# })
+
 ```
 
