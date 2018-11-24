@@ -142,9 +142,14 @@ save(peeps, file = "peeps.Rdata")
 ```
 
 ```{r}
-# new_peeps = lapply(state.abb, function(st){
+peeps[["PA"]] = peeps[["PA"]][-c(4,19),]
+new_peeps = lapply(state.abb, function(st){
+# for (st in state.abb){
 t = peeps[[st]]
 t = t[-1,]
+if(nrow(t) == 1){
+  t[1,1] = str_replace(t[1,1], "at-large", "0")
+}
 names(t)[2] = "district_numbers"
 names(t)[3] = "incumbent_name"
 names(t)[4] = "incumbent_party"
@@ -158,8 +163,25 @@ t$cand2 = t_second_let
 t = t %>% select(District, cand1, cand2)
 t$num = str_extract(t$District, "\\d+")
 t$District = str_remove_all(t$District, "\\s\\d+")
-
-# })
-
+names(t)[1] = "state"
+abbr = state.abb[which(str_detect(t$state[1], state.name))]
+single_digit = which(str_detect(t$num, "^\\d$"))
+t$num[single_digit] = paste0("0", t$num[single_digit])
+rownames(t) = paste(abbr, t$num, sep = "_")
+t = t %>% select(-state, -num)
+dems1 = which(str_detect(t$cand1, "Democratic"))
+dems2 = which(str_detect(t$cand2, "Democratic"))
+tofill = rep(NA, nrow(t))
+tofill[-c(dems1, dems2)] = "none"
+tofill[dems1] = str_remove(t$cand1[dems1], "Democratic")
+tofill[dems2] = str_remove(t$cand2[dems2], "Democratic")
+t$dems = tofill
+t$uncon = str_detect(t$dems, "Unopposed")
+t$dems = str_remove(t$dems, "Unopposed")
+t = t[,c("dems", "uncon")]
+t
+# }
+})
+names(new_peeps) = state.abb
 ```
 
