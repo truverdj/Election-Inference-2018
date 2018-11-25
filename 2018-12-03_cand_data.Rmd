@@ -85,6 +85,8 @@ nyt_calls$Num = dis_num
 return(nyt_calls)
 }
 new_nyt_calls = clean_nyt(df = nyt_calls)
+new_nyt_calls = new_nyt_calls[order(new_nyt_calls$State),] %>%
+  mutate(Num = str_replace(Num, ".At.Large", "0"))
 ```
 
 ```{r}
@@ -125,6 +127,10 @@ house_mod = house %>%
   mutate(Coverage_End_Date = as.Date(Coverage_End_Date, "%m/%d/%Y")) %>%
   select(Cand_Name, Cand_Id, Cand_Office_St, Cand_Office_Dist, Cand_Party_Affiliation,
          Cand_Incumbent_Challenger_Open_Seat, Total_Disbursement, Coverage_End_Date)
+save(house_mod, file = "house_mod.Rdata")
+```
+
+```{r}
 if(!file.exists("peeps.Rdata")){
 wiki_page = read_html("https://en.wikipedia.org/wiki/United_States_House_of_Representatives_elections,_2018#Alabama")
 test_xpath = paste0("//*[@id=\"mw-content-text\"]/div/table[",1:50+12,"]")
@@ -183,6 +189,42 @@ t
 # }
 })
 names(new_peeps) = state.abb
+save(new_peeps, file = "new_peeps.Rdata")
+```
+
+```{r nyt_scrape_names}
+url_states = tolower(state.name) %>%
+  str_replace(.,"\\s","-")
+names(url_states) = state.abb
+# nyt_pages = list()
+nyt_peeps = list()
+# for(st in url_states){
+#   nyt_url = paste0("https://www.nytimes.com/interactive/2018/11/06/us/elections/results-",
+#                  st,"-elections.html")
+#   page_nyt = read_html(nyt_url)
+#   nyt_pages[[st]] = page_nyt
+#   # tab1 = page_nyt %>%
+#   #   html_node(xpath = "//*[@id=\"house-group\"]/table") %>%
+#   #   html_table(fill = TRUE)
+#   # nyt_peeps[[st]] = tab1
+#   Sys.sleep(1)
+# }
+# save(nyt_pages, file = "nyt_pages.Rdata")
+for(st in state.abb){
+  nyt_peeps[[st]] = st
+}
+names(nyt_pages) = state.abb
+at_larges = new_nyt_calls$State[which(new_nyt_calls$Num == "00")]
+for(st in state.abb){
+  if(!st %in% at_larges){
+    nyt_peeps[[st]] = nyt_pages[[st]] %>% 
+      html_node(xpath = "//*[@id=\"house-group\"]/table") %>% 
+      html_table(fill = TRUE)
+  }
+}
+nyt_peeps$AK = nyt_pages$AK %>% 
+  html_node(xpath = "//*[@id=\"ak-2015-2018-11-06-results-table-container\"]/table") %>%
+  html_table(fill = TRUE)
 ```
 
 ```{r, echo=FALSE, eval=FALSE}

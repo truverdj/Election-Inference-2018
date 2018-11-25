@@ -7,5 +7,52 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(stringr)
+load("house_mod.Rdata")
+load("new_peeps.Rdata")
 ```
 
+```{r}
+house_mod = house_mod %>%
+  mutate(last_name = str_extract(Cand_Name, "^.+,")) %>%
+  mutate(last_name = str_remove(last_name, ",")) %>%
+  mutate(first_name = str_extract(Cand_Name, ",.+$")) %>%
+  mutate(first_name = str_remove(first_name, ",\\s")) %>%
+  mutate(full_name = paste(first_name, last_name))
+dis_num = house_mod$Cand_Office_Dist
+dis_num[!str_detect(dis_num, "\\d\\d")] = paste0("0",dis_num[!str_detect(dis_num, "\\d\\d")])
+house_mod$Cand_Office_Dist = dis_num
+```
+
+```{r}
+
+```
+
+```{r}
+st = "CA"
+# name_join = lapply(state.abb, function(st){
+  t = new_peeps[[st]]
+  join_peeps = tolower(t$dems)
+  join_peeps = str_extract(join_peeps, "[a-z]+\\s[a-z]+\\s")
+  house_state = house_mod %>%
+    filter(Cand_Office_St == st)
+  lasts = str_remove(house_state$last_name, "-")
+  first = house_state$first_name
+  fulls = house_state$full_name
+  in.join_lasts = unlist(lapply(lasts, function(l){
+    temp = which(str_detect(join_peeps, l))
+    ifelse(length(temp) < 1, NA, temp)
+  }))
+  house_state = house_state[!is.na(in.join_lasts),]
+  t$unit_district = rownames(t)
+  house_state = house_state %>%
+    mutate(unit_district = paste(Cand_Office_St, Cand_Office_Dist, sep = "_"))
+  new_t = inner_join(t, house_state, by = "unit_district") 
+  new_t = new_t %>%
+    select(full_name, uncon, unit_district, Cand_Party_Affiliation,
+           Cand_Incumbent_Challenger_Open_Seat, Total_Disbursement, Coverage_End_Date) %>%
+    filter(Cand_Party_Affiliation == "DEM")
+# })
+# names(name_join) = state.abb
+```
