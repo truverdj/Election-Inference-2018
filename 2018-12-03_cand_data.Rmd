@@ -193,7 +193,9 @@ save(new_peeps, file = "new_peeps.Rdata")
 ```
 
 ```{r nyt_scrape_names}
-url_states = tolower(state.name) %>%
+at_larges = new_nyt_calls$State[which(new_nyt_calls$Num == "00")]
+if(!file.exists("nyt_peeps.Rdata")){
+  url_states = tolower(state.name) %>%
   str_replace(.,"\\s","-")
 names(url_states) = state.abb
 # nyt_pages = list()
@@ -214,7 +216,7 @@ for(st in state.abb){
   nyt_peeps[[st]] = st
 }
 names(nyt_pages) = state.abb
-at_larges = new_nyt_calls$State[which(new_nyt_calls$Num == "00")]
+
 for(st in state.abb){
   if(!st %in% at_larges){
     nyt_peeps[[st]] = nyt_pages[[st]] %>% 
@@ -225,6 +227,62 @@ for(st in state.abb){
 nyt_peeps$AK = nyt_pages$AK %>% 
   html_node(xpath = "//*[@id=\"ak-2015-2018-11-06-results-table-container\"]/table") %>%
   html_table(fill = TRUE)
+nyt_peeps$DE = nyt_pages$DE %>%
+  html_node(xpath = "//*[@id=\"de-8074-2018-11-06-results-table-container\"]/table") %>%
+  html_table(fill = TRUE)
+nyt_peeps$MT = nyt_pages$MT %>%
+  html_node(xpath = "//*[@id=\"mt-28447-2018-11-06-results-table-container\"]/table") %>%
+  html_table(fill = TRUE)
+nyt_peeps$ND = nyt_pages$ND %>%
+  html_node(xpath = "//*[@id=\"nd-35342-2018-11-06-results-table-container\"]/table") %>%
+  html_table(fill = TRUE) 
+nyt_peeps$SD = nyt_pages$SD %>%
+  html_node(xpath = "//*[@id=\"sd-42005-2018-11-06-results-table-container\"]/table") %>%
+  html_table(fill = TRUE)
+nyt_peeps$VT = nyt_pages$VT %>%
+  html_node(xpath = "//*[@id=\"vt-46374-2018-11-06-results-table-container\"]/table") %>%
+  html_table(fill = TRUE)
+nyt_peeps$WY = nyt_pages$WY %>%
+  html_node(xpath = "//*[@id=\"wy-51401-2018-11-06-results-table-container\"]/table") %>%
+  html_table(fill = TRUE)
+save(nyt_peeps, file = "nyt_peeps.Rdata")
+} else {
+  load("nyt_peeps.Rdata")
+}
+```
+
+```{r}
+new_nyt_peeps = nyt_peeps
+# for(st in state.abb){
+st = "CA"
+  t = nyt_peeps[[st]]
+  new_t = t[,1:3]
+  names(new_t) = c("dist", "cand1", "cand2")
+  if(any(str_detect(new_t$cand1, "Show all"))){
+    new_t = new_t[-nrow(new_t),]
+  }
+  singles = which(as.numeric(new_t$dist) < 10)
+  new_t$dist[singles] = paste0("0", new_t$dist[singles])
+  new_t$dist = paste(st, new_t$dist, sep = "_")
+  new_t$cand1 = str_remove_all(new_t$cand1, "\\d|%|\\*|\\." )
+  new_t$cand2 = str_remove_all(new_t$cand2, "\\d|%|\\*|\\." )
+  new_t$uncon = str_detect(new_t$cand1, "Uncontested") | str_detect(new_t$cand2, "Uncontested")
+  cand1.dem = which(str_detect(new_t$cand1, "Dem"))
+  cand2.dem = which(str_detect(new_t$cand2, "Dem"))
+  new_t$dems = "none"
+  new_t$dems[cand2.dem] = new_t$cand2[cand2.dem]
+  new_t$dems[cand1.dem] = new_t$cand1[cand1.dem]
+  new_t = new_t %>% select(dist, uncon, dems)
+  new_t$dems = tolower(str_remove(new_t$dems, "Dem"))
+  new_t$dems = str_remove(new_t$dems, "-")
+  new_nyt_peeps[[st]] = new_t
+```
+
+```{r}
+st = "AK"
+  t = nyt_peeps[[st]]
+  
+# }
 ```
 
 ```{r, echo=FALSE, eval=FALSE}
