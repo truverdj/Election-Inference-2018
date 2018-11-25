@@ -275,7 +275,7 @@ for(st in state.abb){
   new_t$dems[cand2.dem] = new_t$cand2[cand2.dem]
   new_t$dems[cand1.dem] = new_t$cand1[cand1.dem]
   new_t = new_t %>% select(dist, uncon, dems)
-  new_t$dems = tolower(str_remove(new_t$dems, " Dem"))
+  new_t$dems = tolower(str_remove(new_t$dems, "Dem"))
   new_t$dems = str_remove(new_t$dems, "-")
   new_nyt_peeps[[st]] = new_t
   }

@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(stringr)
 load("house_mod.Rdata")
-load("new_peeps.Rdata")
+load("new_nyt_peeps.Rdata")
 ```
 
 ```{r}
@@ -26,9 +26,11 @@ house_mod$Cand_Office_Dist = dis_num
 ```
 
 ```{r}
-
+# this chunk runs everything else
 ```
 
+
+<!--
 ```{r}
 st = "CA"
 # name_join = lapply(state.abb, function(st){
@@ -56,3 +58,4 @@ st = "CA"
 # })
 # names(name_join) = state.abb
 ```
+--->
