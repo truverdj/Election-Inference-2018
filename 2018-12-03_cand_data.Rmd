@@ -252,9 +252,11 @@ save(nyt_peeps, file = "nyt_peeps.Rdata")
 ```
 
 ```{r}
+if(!file.exists("new_nyt_peeps.Rdata")){
 new_nyt_peeps = nyt_peeps
-# for(st in state.abb){
-st = "CA"
+for(st in state.abb){
+# st = "CA"
+  if(!st %in% at_larges){
   t = nyt_peeps[[st]]
   new_t = t[,1:3]
   names(new_t) = c("dist", "cand1", "cand2")
@@ -273,16 +275,31 @@ st = "CA"
   new_t$dems[cand2.dem] = new_t$cand2[cand2.dem]
   new_t$dems[cand1.dem] = new_t$cand1[cand1.dem]
   new_t = new_t %>% select(dist, uncon, dems)
-  new_t$dems = tolower(str_remove(new_t$dems, "Dem"))
+  new_t$dems = tolower(str_remove(new_t$dems, " Dem"))
   new_t$dems = str_remove(new_t$dems, "-")
   new_nyt_peeps[[st]] = new_t
-```
-
-```{r}
-st = "AK"
+  }
+# st = "DE"
+  else {
   t = nyt_peeps[[st]]
-  
-# }
+  t$Candidate = tolower(str_remove_all(t$Candidate, "\\*|-"))
+  party.dem = str_detect(t$Party, "Dem")
+  if(sum(party.dem) == 0){
+    new_t = "none"
+  } else {
+    new_t = t[which(party.dem),]
+    new_t$dist = paste(st, "00", sep = "_")
+    new_t$uncon = nrow(t) == 1
+    new_t$dems = str_extract(new_t$Candidate, "[a-z]+")
+    new_t = new_t %>% select(dist, uncon, dems)
+  }
+  new_nyt_peeps[[st]] = new_t
+  }
+}
+save(new_nyt_peeps, file = "new_nyt_peeps.Rdata")
+} else {
+  load("new_nyt_peeps.Rdata")
+}
 ```
 
 ```{r, echo=FALSE, eval=FALSE}
