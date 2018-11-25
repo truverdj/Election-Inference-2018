@@ -86,7 +86,9 @@ return(nyt_calls)
 }
 new_nyt_calls = clean_nyt(df = nyt_calls)
 new_nyt_calls = new_nyt_calls[order(new_nyt_calls$State),] %>%
-  mutate(Num = str_replace(Num, ".At.Large", "0"))
+  mutate(Num = str_replace(Num, ".At.Large", "0")) %>%
+  mutate(dist = paste(State, Num, sep = "_"))
+save(new_nyt_calls, file = "new_nyt_calls.Rdata")
 ```
 
 ```{r}
@@ -113,6 +115,10 @@ save(nyt_calls2016, file = "nyt_calls2016.Rdata")
   load("nyt_calls2016.Rdata")
 }
 new_nyt_calls2016 = clean_nyt(df = nyt_calls2016)
+new_nyt_calls2016 = new_nyt_calls2016[order(new_nyt_calls2016$State),] %>%
+  mutate(Num = str_replace(Num, ".At.Large", "0")) %>%
+  mutate(dist = paste(State, Num, sep = "_"))
+save(new_nyt_calls2016, file = "new_nyt_calls2016.Rdata")
 ```
 
 ```{r}
@@ -130,67 +136,7 @@ house_mod = house %>%
 save(house_mod, file = "house_mod.Rdata")
 ```
 
-```{r}
-if(!file.exists("peeps.Rdata")){
-wiki_page = read_html("https://en.wikipedia.org/wiki/United_States_House_of_Representatives_elections,_2018#Alabama")
-test_xpath = paste0("//*[@id=\"mw-content-text\"]/div/table[",1:50+12,"]")
-test = lapply(test_xpath, function(x_path){
-  wiki_page %>%
-    html_node(xpath = x_path) %>%
-    html_table(fill = TRUE)
-})
-names(test) = state.abb
-peeps = test
-save(peeps, file = "peeps.Rdata")
-} else {
-  load("peeps.Rdata")
-}
-```
 
-```{r}
-peeps[["PA"]] = peeps[["PA"]][-c(4,19),]
-new_peeps = lapply(state.abb, function(st){
-# for (st in state.abb){
-t = peeps[[st]]
-t = t[-1,]
-if(nrow(t) == 1){
-  t[1,1] = str_replace(t[1,1], "at-large", "0")
-}
-names(t)[2] = "district_numbers"
-names(t)[3] = "incumbent_name"
-names(t)[4] = "incumbent_party"
-t_names = t$Candidates
-t_first = str_extract(t_names, "^(.+?)\\[")
-t_second = str_extract(t_names, "\\].+\\[")
-t_first_let = str_remove_all(t_first, "[^a-zA-Z\\s]+")
-t_second_let = str_remove_all(t_second, "[^a-zA-Z\\s]+")
-t$cand1 = t_first_let
-t$cand2 = t_second_let
-t = t %>% select(District, cand1, cand2)
-t$num = str_extract(t$District, "\\d+")
-t$District = str_remove_all(t$District, "\\s\\d+")
-names(t)[1] = "state"
-abbr = state.abb[which(str_detect(t$state[1], state.name))]
-single_digit = which(str_detect(t$num, "^\\d$"))
-t$num[single_digit] = paste0("0", t$num[single_digit])
-rownames(t) = paste(abbr, t$num, sep = "_")
-t = t %>% select(-state, -num)
-dems1 = which(str_detect(t$cand1, "Democratic"))
-dems2 = which(str_detect(t$cand2, "Democratic"))
-tofill = rep(NA, nrow(t))
-tofill[-c(dems1, dems2)] = "none"
-tofill[dems1] = str_remove(t$cand1[dems1], "Democratic")
-tofill[dems2] = str_remove(t$cand2[dems2], "Democratic")
-t$dems = tofill
-t$uncon = str_detect(t$dems, "Unopposed")
-t$dems = str_remove(t$dems, "Unopposed")
-t = t[,c("dems", "uncon")]
-t
-# }
-})
-names(new_peeps) = state.abb
-save(new_peeps, file = "new_peeps.Rdata")
-```
 
 ```{r nyt_scrape_names}
 at_larges = new_nyt_calls$State[which(new_nyt_calls$Num == "00")]
@@ -302,6 +248,71 @@ save(new_nyt_peeps, file = "new_nyt_peeps.Rdata")
 }
 ```
 
+<!--
+```{r}
+if(!file.exists("peeps.Rdata")){
+wiki_page = read_html("https://en.wikipedia.org/wiki/United_States_House_of_Representatives_elections,_2018#Alabama")
+test_xpath = paste0("//*[@id=\"mw-content-text\"]/div/table[",1:50+12,"]")
+test = lapply(test_xpath, function(x_path){
+  wiki_page %>%
+    html_node(xpath = x_path) %>%
+    html_table(fill = TRUE)
+})
+names(test) = state.abb
+peeps = test
+save(peeps, file = "peeps.Rdata")
+} else {
+  load("peeps.Rdata")
+}
+```
+
+```{r}
+peeps[["PA"]] = peeps[["PA"]][-c(4,19),]
+new_peeps = lapply(state.abb, function(st){
+# for (st in state.abb){
+t = peeps[[st]]
+t = t[-1,]
+if(nrow(t) == 1){
+  t[1,1] = str_replace(t[1,1], "at-large", "0")
+}
+names(t)[2] = "district_numbers"
+names(t)[3] = "incumbent_name"
+names(t)[4] = "incumbent_party"
+t_names = t$Candidates
+t_first = str_extract(t_names, "^(.+?)\\[")
+t_second = str_extract(t_names, "\\].+\\[")
+t_first_let = str_remove_all(t_first, "[^a-zA-Z\\s]+")
+t_second_let = str_remove_all(t_second, "[^a-zA-Z\\s]+")
+t$cand1 = t_first_let
+t$cand2 = t_second_let
+t = t %>% select(District, cand1, cand2)
+t$num = str_extract(t$District, "\\d+")
+t$District = str_remove_all(t$District, "\\s\\d+")
+names(t)[1] = "state"
+abbr = state.abb[which(str_detect(t$state[1], state.name))]
+single_digit = which(str_detect(t$num, "^\\d$"))
+t$num[single_digit] = paste0("0", t$num[single_digit])
+rownames(t) = paste(abbr, t$num, sep = "_")
+t = t %>% select(-state, -num)
+dems1 = which(str_detect(t$cand1, "Democratic"))
+dems2 = which(str_detect(t$cand2, "Democratic"))
+tofill = rep(NA, nrow(t))
+tofill[-c(dems1, dems2)] = "none"
+tofill[dems1] = str_remove(t$cand1[dems1], "Democratic")
+tofill[dems2] = str_remove(t$cand2[dems2], "Democratic")
+t$dems = tofill
+t$uncon = str_detect(t$dems, "Unopposed")
+t$dems = str_remove(t$dems, "Unopposed")
+t = t[,c("dems", "uncon")]
+t
+# }
+})
+names(new_peeps) = state.abb
+save(new_peeps, file = "new_peeps.Rdata")
+```
+--->
+
 ```{r, echo=FALSE, eval=FALSE}
 # this block runs everything else in markdown
 ```
+

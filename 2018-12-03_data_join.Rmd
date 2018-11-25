@@ -11,6 +11,9 @@ library(dplyr)
 library(stringr)
 load("house_mod.Rdata")
 load("new_nyt_peeps.Rdata")
+house_mod = house_mod %>%
+  filter(Cand_Name != "cox, stephan")
+filing = as.Date("2018-10-17")
 ```
 
 ```{r}
@@ -23,6 +26,47 @@ house_mod = house_mod %>%
 dis_num = house_mod$Cand_Office_Dist
 dis_num[!str_detect(dis_num, "\\d\\d")] = paste0("0",dis_num[!str_detect(dis_num, "\\d\\d")])
 house_mod$Cand_Office_Dist = dis_num
+house_mod$dist = paste(house_mod$Cand_Office_St, house_mod$Cand_Office_Dist, sep = "_")
+```
+
+```{r}
+# for(st in state.abb){
+joins = lapply(state.abb[-2], function(st){
+  # st = "AL"
+  t = new_nyt_peeps[[st]]
+  state = filter(house_mod, Cand_Office_St == st)
+  t.lasts = str_remove(t$dems, "[^a-z]") %>%
+    str_replace(.,"snchez ", "sanchez") %>%
+    str_replace(.," jr", "")
+  lasts = str_remove(state$last_name, "-")
+  in.join_lasts = unlist(lapply(lasts, function(l){
+    temp = which(t.lasts == l)
+    ifelse(length(temp) < 1, NA, temp)
+  }))
+  state_gen = state[!is.na(in.join_lasts),]
+  state_gen = state_gen %>% 
+    filter(Coverage_End_Date == filing) %>%
+    filter(Cand_Party_Affiliation == "DEM")
+  state_gen = state_gen %>% 
+    select(Cand_Office_St, dist, Cand_Incumbent_Challenger_Open_Seat,
+           Total_Disbursement)
+  new_t = inner_join(state_gen, t, by = "dist")
+  new_t
+})
+# }
+names(joins) = state.abb[-2]
+```
+
+```{r to_be_removed}
+##### REMOVE THIS EVENTUALLY
+ex_state = which(names(joins) == "DE")
+new_joins = joins[-ex_state]
+exclude_st = c("AK", "DE")
+##### REMOVE THIS EVENTUALLY
+```
+
+```{r}
+load()
 ```
 
 ```{r}
