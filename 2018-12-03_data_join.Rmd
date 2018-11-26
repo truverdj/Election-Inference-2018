@@ -58,15 +58,49 @@ names(joins) = state.abb[-2]
 ```
 
 ```{r to_be_removed}
-##### REMOVE THIS EVENTUALLY
+##### REMOVE THIS EVENTUALLY AFTER FEC UPDATE
 ex_state = which(names(joins) == "DE")
 new_joins = joins[-ex_state]
 exclude_st = c("AK", "DE")
-##### REMOVE THIS EVENTUALLY
+##### REMOVE THIS EVENTUALLY AFTER FEC UPDATE
 ```
 
 ```{r}
-load()
+load("new_nyt_calls.Rdata")
+load("new_nyt_calls2016.Rdata")
+money_2018 = NULL
+for(i in seq_along(new_joins)){
+  money_2018 = rbind(money_2018, new_joins[[i]])
+}
+calls_2018 = new_nyt_calls %>% select(Dem., dist)
+names(calls_2018) = c("prop_dem2018", "dist")
+calls_2016 = new_nyt_calls2016 %>% select(Dem., dist)
+names(calls_2016) = c("prop_dem2016", "dist")
+t = inner_join(money_2018, calls_2018, by = "dist")
+money_calls2018 = inner_join(t, calls_2016, by = "dist")
+```
+
+```{r}
+load("census_districts.Rdata")
+wide_census = lapply(state.abb ,function(st){
+  # st = "AL"
+  t = new_states[[st]]
+  vars = paste(t$subject, t$title, sep = "_")
+  vars = str_replace_all(vars, "\\s", "_")
+  dist = names(t)[-(1:2)]
+  dist = str_replace_all(dist, ".At.Large.", "00")
+  new_t = t %>% select(-subject, -title) %>% t() %>% as.data.frame()
+  new_t$dist = dist
+  names(new_t) = c(vars, "dist")
+  new_t
+})
+census_2018 = NULL
+for(i in seq_along(wide_census)){
+  census_2018 = rbind(census_2018, wide_census[[i]])
+}
+full_data = inner_join(money_calls2018, census_2018, by = "dist") 
+save(full_data, "full_data.Rdata")
+# lm_form = as.formula("log(Total_Disbursement)~.-Cand_Office_St-dist-prop_dem2018-dems")
 ```
 
 ```{r}
