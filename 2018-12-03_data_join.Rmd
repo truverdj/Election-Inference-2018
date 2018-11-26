@@ -99,7 +99,7 @@ for(i in seq_along(wide_census)){
   census_2018 = rbind(census_2018, wide_census[[i]])
 }
 full_data = inner_join(money_calls2018, census_2018, by = "dist") 
-save(full_data, "full_data.Rdata")
+save(full_data, file = "full_data.Rdata")
 # lm_form = as.formula("log(Total_Disbursement)~.-Cand_Office_St-dist-prop_dem2018-dems")
 ```
 
