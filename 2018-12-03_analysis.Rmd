@@ -86,7 +86,15 @@ model = "model{
   sigma ~ dunif(0, 100)
   tau = 1/(sigma * sigma)
 }"
-  
+params = c("beta","beta_alpha", "alpha", "sigma", "sigma_alpha")
+n_burn = 1000
+n_iter = 5000
+n_chains = 2
+```
+
+```{r the_big_one}
+m = jags.model(textConnection(model), data = jags_list,
+               quiet = TRUE, n.chains = n_chains)
 ```
 
 <!--
