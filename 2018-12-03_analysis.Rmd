@@ -1,0 +1,102 @@
+---
+title: "2018-12-03_analysis"
+author: "Daniel Truver"
+date: "11/26/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(dplyr)
+library(ggplot2)
+library(rjags)
+library(mice)
+library(stringr)
+```
+
+```{r final.clean}
+load("full_data.Rdata")
+na_2016 = is.na(full_data$prop_dem2016)
+neg_2016 = full_data$prop_dem2016 < 0
+neg_2018 = full_data$prop_dem2018 < 0
+full_data$prop_dem2016[na_2016] = 0
+full_data$prop_dem2016[neg_2016] = 1
+full_data$prop_dem2018[neg_2018] = 1
+
+none_forest = which(is.na(full_data$`Paid_employees_for_pay_period_including_March_12_Agriculture,_forestry,_fishing_and_hunting`))
+
+none_extraction = which(is.na(full_data$`Paid_employees_for_pay_period_including_March_12_Mining,_quarrying,_and_oil_and_gas_extraction`))
+
+none_util = which(is.na(full_data$Paid_employees_for_pay_period_including_March_12_Utilities))
+
+full_data$`Paid_employees_for_pay_period_including_March_12_Agriculture,_forestry,_fishing_and_hunting`[none_forest] = 0
+full_data$`Annual_payroll_($1,000)_Agriculture,_forestry,_fishing_and_hunting`[none_forest] = 0
+
+full_data$`Paid_employees_for_pay_period_including_March_12_Mining,_quarrying,_and_oil_and_gas_extraction`[none_extraction] = 0
+full_data$`Annual_payroll_($1,000)_Mining,_quarrying,_and_oil_and_gas_extraction`[none_extraction] = 0
+
+full_data$Paid_employees_for_pay_period_including_March_12_Utilities[none_util] = 0
+full_data$`Annual_payroll_($1,000)_Utilities`[none_util] = 0
+
+no_hisp = which(is.na(full_data$Hispanic_or_Latino_and_Race_Mexican))
+no_hisp_cols = 37:40
+full_data[no_hisp, no_hisp_cols] = 0
+noGross = which(str_detect(names(full_data), "Gross_Rent"))
+to_remove_gross = noGross[-9]
+full_data = full_data[,-to_remove_gross]
+full_data = full_data %>%
+  filter(dist != "AZ_02")
+```
+
+```{r jags_data}
+unique_states = unique(full_data$Cand_Office_St)
+state_num = seq_along(unique_states)
+state_index = unlist(lapply(full_data$Cand_Office_St, function(st){
+  which(unique_states == st)
+}))
+full_data$state_index = state_index
+lm_form = as.formula("log(Total_Disbursement)~.-Cand_Office_St-dist-
+                     prop_dem2018-dems-1-state_index")
+y = log(full_data$Total_Disbursement)
+X = model.matrix(lm_form, full_data)
+n = nrow(X)
+p = ncol(X)
+jags_list = list(y = y, X = X, p = p, n = n, state_index = state_index)
+```
+
+```{r}
+model = "model{
+  for(i in 1:length(y)){
+    y[i] ~ dnorm(mu[i], tau)
+    mu[i] = alpha[state_index[i]] + inprod(beta[],X[i,])
+  }
+  for(j in 1:48){
+    alpha[j] ~ dnorm(beta_alpha, tau_alpha)
+  }
+  
+  
+  beta_alpha ~ dnorm(0,1/10000)
+  sigma_alpha ~ dunif(0,100)
+  tau_alpha = 1/(sigma_alpha * sigma_alpha)
+  
+  for(k in 1:p){
+    beta[k] ~ dnorm(0, 1/10000)
+  }
+  
+  sigma ~ dunif(0, 100)
+  tau = 1/(sigma * sigma)
+}"
+  
+```
+
+<!--
+Spatial models of correlation: http://www2.stat.duke.edu/~cr173/Sta444_Sp18/
+
+JAGS gods: http://www.flutterbys.com.au/stats/tut/tut7.3b.html
+--->
+
+
+
+$$
+\begin{align} y_i&\sim{}N(\mu_i, \tau)\\ \mu_i &= \beta_0 + \beta X_i\\ \beta_0&\sim{}N(0,1.0{E-6}) \hspace{1cm}\mathsf{non-informative~prior~for~interept}\\ \beta_j&\sim{}N(0,1.0{E-6}) \hspace{1cm}\mathsf{non-informative~prior~for~partial~slopes}\\ \tau &= 1/\sigma^2\\ \sigma&\sim{}U(0,100)\\ \end{align}
+$$
