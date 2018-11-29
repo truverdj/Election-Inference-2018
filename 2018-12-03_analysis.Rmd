@@ -88,23 +88,83 @@ model = "model{
 }"
 params = c("beta","beta_alpha", "alpha", "sigma", "sigma_alpha")
 n_burn = 1000
-n_iter = 5000
+n_iter = 15000
 n_chains = 2
 ```
 
 ```{r the_big_one}
-m = jags.model(textConnection(model), data = jags_list,
-               quiet = TRUE, n.chains = n_chains)
+if(!file.exists("jags_samp.Rdata")){
+  m = jags.model(textConnection(model), data = jags_list,
+              n.chains = n_chains)
+  update(m, n.iter = n_burn)
+  jags_samp = coda.samples(m,n.iter = n_iter, variable.names = params)
+  save(jags_samp,file = "jags_samp.Rdata")
+} else {
+  load("jags_samp.Rdata")
+}
+```
+
+```{r extract_jag}
+post = as.data.frame(jags_samp[[1]])
+alpha_names = paste0("alpha_", 1:48)
+beta_names = paste0("beta_",1:207)
+other_names = c("beta_alpha", "sigma", "sigma_alpha")
+post_names = c(alpha_names, beta_names, other_names)
+names(post) = post_names
+post_estimates = apply(post, 2, mean)
+alphas = post_estimates[str_detect(names(post_estimates), "alpha_")]
+betas = post_estimates[str_detect(names(post_estimates), "beta_\\d")]
+sigma = post_estimates["sigma"]
+sigma_alpha = post_estimates["sigma_alpha"]
+sigma_z.2 = sigma^2 + sigma_alpha^2
+```
+
+```{r}
+mu_z = X %*% betas + alphas[state_index]
+gps = dnorm(y, mean = mu_z, sd = sqrt(sigma_z.2))
+full_data$gps = gps
+```
+
+```{r}
+log_disb = log(full_data$Total_Disbursement)
+quant_disb = quantile(log_disb, 0.2*(0:5))
+quant_disb[1] = 0
+quant_label = unlist(lapply(log_disb, function(x){
+  t = rep(NA, length(quant_disb)-1)
+  for(i in 2:length(quant_disb)){
+    t[i-1] = quant_disb[i-1] < x & x <= quant_disb[i]
+  }
+  which(t)
+}))
+full_data$quant_label = quant_label
+g = list()
+for(i in sort(unique(quant_label))){
+  Quantile = paste0("W quantile ", i)
+  gi = geom_density(data = full_data %>% filter(quant_label == i),
+                    aes(x = gps, color = i))
+  g[[i]] = gi
+}
+ggplot() +
+  geom_density(data = full_data %>% filter(quant_label == 1),
+                    aes(x = gps, color = "W quantile 1")) +
+  geom_density(data = full_data %>% filter(quant_label == 2),
+                    aes(x = gps, color = "W quantile 2")) +
+  geom_density(data = full_data %>% filter(quant_label == 3),
+                    aes(x = gps, color = "W quantile 3")) +
+  geom_density(data = full_data %>% filter(quant_label == 4),
+                    aes(x = gps, color = "W quantile 4")) +
+  geom_density(data = full_data %>% filter(quant_label == 5),
+                    aes(x = gps, color = "W quantile 5")) +
+  ggtitle("GPS Overlap, 5 Quantiles") +
+  theme_bw()
+```
+
+```{r}
+forms = lapply()
 ```
 
 <!--
-Spatial models of correlation: http://www2.stat.duke.edu/~cr173/Sta444_Sp18/
+models of correlation: http://www2.stat.duke.edu/~cr173/Sta444_Sp18/
 
 JAGS gods: http://www.flutterbys.com.au/stats/tut/tut7.3b.html
 --->
-
-
-
-$$
-\begin{align} y_i&\sim{}N(\mu_i, \tau)\\ \mu_i &= \beta_0 + \beta X_i\\ \beta_0&\sim{}N(0,1.0{E-6}) \hspace{1cm}\mathsf{non-informative~prior~for~interept}\\ \beta_j&\sim{}N(0,1.0{E-6}) \hspace{1cm}\mathsf{non-informative~prior~for~partial~slopes}\\ \tau &= 1/\sigma^2\\ \sigma&\sim{}U(0,100)\\ \end{align}
-$$
