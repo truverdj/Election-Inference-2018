@@ -160,7 +160,10 @@ ggplot() +
 ```
 
 ```{r}
-forms = lapply()
+x_to_check = names(full_data)[-c(1,2,4,6,7,210:212)] 
+forms = lapply(x_to_check, function(x){
+  as.formula()
+})
 ```
 
 <!--
