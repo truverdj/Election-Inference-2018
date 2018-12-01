@@ -1,5 +1,5 @@
 ---
-title: "2018-12-03_analysis"
+title: "Effect of Campaign Spending on Votes Received"
 author: "Daniel Truver"
 date: "11/26/2018"
 output: html_document
@@ -47,6 +47,10 @@ full_data = full_data[,-to_remove_gross]
 full_data = full_data %>%
   filter(dist != "AZ_02")
 ```
+
+#### Introduction and Purpose
+
+Does money affect elections? Intuitively, yes. The magnitude of the effect is our concern here. 
 
 ```{r jags_data}
 unique_states = unique(full_data$Cand_Office_St)
@@ -144,7 +148,7 @@ for(i in sort(unique(quant_label))){
                     aes(x = gps, color = i))
   g[[i]] = gi
 }
-ggplot() +
+g_overlap = ggplot() +
   geom_density(data = full_data %>% filter(quant_label == 1),
                     aes(x = gps, color = "W quantile 1")) +
   geom_density(data = full_data %>% filter(quant_label == 2),
@@ -172,25 +176,163 @@ models = lapply(seq_along(x_to_check), function(i){
     t = cbind(Y, X)
     mod0 = lm(Y~Total_Disbursement + gps, data = t)
     mod_summ = summary(mod0)
-    # mod1 = lm(Y~Total_Disbursement, data = t)
-    # mod_summ = summary(mod1)
-    # test = lrtest(mod0, mod1)
-    # p_value = test$`Pr(>Chisq)`[2]
+    p_value = mod_summ$coefficients["Total_Disbursement", 4]
+  } else if(i == 1) {
+    Y = new_data[,f] == "OPEN"
+    X = new_data[,c("Total_Disbursement", "gps")]
+    t = cbind(Y, X)
+    mod0 = glm(Y~Total_Disbursement + gps, data = t, family = binomial())
+    mod_summ = summary(mod0)
     p_value = mod_summ$coefficients["Total_Disbursement", 4]
   } else {
-    p_value = c()
+    Y = new_data[,f]
+    X = new_data[,c("Total_Disbursement", "gps")]
+    t = cbind(Y, X)
+    mod0 = glm(Y~Total_Disbursement + gps, data = t, family = binomial())
+    mod_summ = summary(mod0)
+    p_value = mod_summ$coefficients["Total_Disbursement", 4]
   }
   p_value
 })
 p_vals = unlist(models)
-ggplot(data = data.frame(p_vals)) +
+g_balance = ggplot(data = data.frame(p_vals)) +
   geom_density(aes(x = p_vals)) +
   geom_vline(xintercept = 0.05, color = "red") +
   ggtitle("Balance by P-value") +
   xlab("Significance") +
   theme_bw()
-bad_balance = which(p_vals < 0.05) + 2
-# house value, education, type of industry, payroll of industry (which are highly correlated)
+bad_balance = which(p_vals < 0.05) 
+trouble_vars = x_to_check[bad_balance]
+wellbehaved_vars = x_to_check[-bad_balance]
+# unblanced: house value, poverty, higher education, type of industry (tech), payroll of industry (which are highly correlated), health insurance
+# also incumbents cannot be balanced
+# balanced: industry(agriculture, health care, retail), race, sex, age, lower education
+```
+
+```{r}
+dose_data = full_data %>% 
+  select(prop_dem2018, Total_Disbursement, gps)
+names(dose_data) = c("Y", "W", "r")
+dose_data$Y[dose_data$Y == 1] = .99
+y = qnorm(dose_data$Y)
+dose_matrix = matrix(NA, nrow = nrow(dose_data), ncol = 6)
+dose_matrix[,1] = 1
+dose_matrix[,2] = log(dose_data$W)
+dose_matrix[,3] = log(dose_data$W)^2
+dose_matrix[,4] = dose_data$r
+dose_matrix[,5] = dose_data$r^2
+dose_matrix[,6] = log(dose_data$W) * dose_data$r
+X = dose_matrix
+n = nrow(X)
+p = ncol(X)
+jags_list = list(y = y, X = X, p = p, n = n)
+```
+
+```{r}
+model = "model{
+  for(i in 1:length(y)){
+    y[i] ~ dnorm(mu[i], tau)
+    mu[i] = inprod(beta[],X[i,])
+  }
+  
+  for(k in 1:p){
+    beta[k] ~ dnorm(0, 1/10000)
+  }
+  
+  sigma ~ dunif(0, 100)
+  tau = 1/(sigma * sigma)
+}"
+params = c("beta", "sigma")
+n_burn = 1000
+n_iter = 15000
+```
+
+```{r}
+if(!file.exists("dose_samp.Rdata")){
+  m = jags.model(textConnection(model), data = jags_list,
+              n.chains = 1)
+  update(m, n.iter = n_burn)
+  dose_samp = coda.samples(m,n.iter = n_iter, variable.names = params)
+  save(dose_samp,file = "dose_samp.Rdata")
+} else {
+  load("dose_samp.Rdata")
+}
+```
+
+```{r}
+BETA = dose_samp[[1]]
+betas = apply(BETA, 2, mean)[1:6]
+sigma = apply(BETA, 2, mean)[7]
+BETAs = BETA[10*(1:1500),1:6]
+dose_response = lapply(log(dose_data$W), function(w){
+  dose_matrix = matrix(NA, nrow = nrow(dose_data), ncol = 6)
+  dose_matrix[,1] = 1
+  dose_matrix[,2] = w
+  dose_matrix[,3] = w^2
+  dose_matrix[,4] = dose_data$r
+  dose_matrix[,5] = dose_data$r^2
+  dose_matrix[,6] = w * dose_data$r
+  responses = dose_matrix %*% betas
+  response_point = mean(responses)
+  response_point
+})
+trt = log(dose_data$W)
+trt.fin = trt[order(trt)]
+res = unlist(dose_response)
+res.fin = res[order(trt)]
+trt.original = exp(trt.fin)
+res.original = pnorm(res.fin)
+log_dose_response = data.frame(res = res.original, trt = trt.fin)
+dose_response.df = data.frame(res = res.original, trt = trt.original)
+```
+
+```{r}
+dose_response = lapply(log(dose_data$W), function(w){
+  dose_matrix = matrix(NA, nrow = nrow(dose_data), ncol = 6)
+  dose_matrix[,1] = 1
+  dose_matrix[,2] = w
+  dose_matrix[,3] = w^2
+  dose_matrix[,4] = dose_data$r
+  dose_matrix[,5] = dose_data$r^2
+  dose_matrix[,6] = w * dose_data$r
+  responses = dose_matrix %*% t(BETAs)
+  response_points = apply(responses, 2, mean)
+  range(response_points)
+})
+min_res = unlist(lapply(dose_response, function(r){r[1]}))
+min_res.fin = min_res[order(trt)]
+max_res = unlist(lapply(dose_response, function(r){r[2]}))
+max_res.fin = max_res[order(trt)]
+dose_response.df$min = pnorm(min_res.fin)
+dose_response.df$max = pnorm(max_res.fin)
+curve_changepoint = dose_response.df$trt[min(which(dose_response.df$res > 0.5))]
+upper_changepoint = dose_response.df$trt[min(which(dose_response.df$max > 0.5))]
+lower_changepoint = dose_response.df$trt[min(which(dose_response.df$min > 0.5))]
+log_curve = ggplot(data = dose_response.df) +
+  geom_line(aes(x = log(trt), y = res)) +
+  geom_point(aes(x = log(trt), y = res), pch = 16) +
+  geom_ribbon(aes(ymin = min, ymax = max, x = log(trt), fill = "Uncertainty"), 
+              alpha = 0.3) +
+  geom_vline(xintercept = log(curve_changepoint), color = "red", lty = "dotted") +
+  geom_vline(xintercept = log(lower_changepoint), color = "red", lty = "dotted") +
+  geom_vline(xintercept = log(upper_changepoint), color = "red", lty = "dotted") +
+  geom_hline(yintercept =  0.50) +
+  # ylim(0,1) + 
+  # xlim(0,17) +
+  ylab("Proportion of Vote") +
+  xlab("Log(Campaign Spending)") +
+  ggtitle("Dose-Response Curve") +
+  theme_bw()
+ori_curve = ggplot(data = dose_response.df) +
+  geom_line(aes(x = trt, y = res)) +
+  geom_point(aes(x = trt, y = res), pch = 16) +
+  geom_ribbon(aes(ymin = min, ymax = max, x = trt, fill = "Uncertainty"), 
+              alpha = 0.3) +
+  # ylim(0,1) + 
+  ylab("Proportion of Vote") +
+  xlab("Campaign Spending") +
+  ggtitle("Dose-Response Curve") +
+  theme_bw()
 ```
 
 <!--
