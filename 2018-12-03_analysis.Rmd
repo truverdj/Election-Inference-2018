@@ -1,5 +1,5 @@
 ---
-title: "Effect of Campaign Spending on Votes Received"
+title: "Effect of Campaign Spending (up to October 17) on Votes Received in 2018 House Midterms"
 author: "Daniel Truver"
 date: "11/26/2018"
 output: html_document
@@ -50,7 +50,23 @@ full_data = full_data %>%
 
 #### Introduction and Purpose
 
-Does money affect elections? Intuitively, yes. The magnitude of the effect is our concern here. 
+All files required to reproduce this analysis with the same or updated data are here: https://github.com/truverdj/Election-Inference-2018  
+
+Does money affect elections? Intuitively, yes. The magnitude of the effect is our concern here. We will build a dose-response curve for 2018 Democratic midterm campaigns for the US House of Representatives. Our "dose" is campaign spending. Our "response" is proportion of votes received. We will take into account demographics and other aspects of each Congressional district as covariates in a generalized propensity score model.  
+
+#### Data
+
+The data on campaign spending comes from Federal Election Commission (FEC) [filings of each campaign](https://www.fec.gov/data/advanced/?tab=candidates). This data also includes information on Incumbent, Challenger, and Open seat designations. Because the FEC does not update in real time, the data used in this analysis is for campaign spending up to October 17, 2018. So, our treatment is campaign spending up to this date. Thankfully, this methodology is entirely reproducible. Using an updated FEC file requires minimal code changes. 
+
+Election results are from the Associated Press and retrieved via the [New York Times](https://www.nytimes.com/interactive/2018/11/06/us/elections/results-house-elections.html). The FEC will eventually have these results as well, but as of the time of this analysis, they do not. A definitive analysis will use the certified vote tallies of each district.
+
+Background characteristics of the congressional districts come from the American Community Survey (ACS) conducted by the [census bureau](https://www.census.gov/mycd/). See "List of District Covariates" section at the end for list of variables used in the model. 
+
+Not all 435 districts are in this set. Reasons for exclusion include: no Democratic party campaign in the district, campaigns that did not have data up to the October 17 deadline (the FEC will force them to comply eventually), and Arizona district 2 because the .csv file on it looks like this 
+
+!["AZ-02 Data Missing"](AZexcluded.png){width=40%}
+
+At the end of all filtering, we have 393 districts with which to work.
 
 ```{r jags_data}
 unique_states = unique(full_data$Cand_Office_St)
@@ -68,7 +84,25 @@ p = ncol(X)
 jags_list = list(y = y, X = X, p = p, n = n, state_index = state_index)
 ```
 
-```{r}
+#### Generalized Propensity Score
+
+We want to specify and random effects model with a different effect for each state. For each Democratic campaign $i$, let $s(i)$ denote the state in which the campaign took place. Let $W_i$ be the total campaign spending up to October 17, 2018. We will use $\alpha_{s(i)}$ to denote the random effects of each campaign's state and $\beta$ as expected for the regression coefficients. We denote the noise as $\epsilon$. Then our full model is:
+
+$$
+\begin{aligned}
+\log(W_i) &= \alpha_{s(i)} + \beta X_i + \epsilon\\
+\alpha_s &\sim N(\beta_\alpha, \sigma_\alpha^2) \\
+\beta_\alpha &\sim N(0,10^4) \\
+\sigma_\alpha &\sim Unif(0,100) \\
+\beta &\sim N(0, 10^4) \\
+\epsilon &\sim N(0, \sigma^2) \\
+\sigma &\sim Unif(0,100) 
+\end{aligned}
+$$
+
+And here is the model in JAGS.
+
+```{r, echo=TRUE}
 model = "model{
   for(i in 1:length(y)){
     y[i] ~ dnorm(mu[i], tau)
@@ -95,6 +129,36 @@ n_burn = 1000
 n_iter = 15000
 n_chains = 2
 ```
+
+A better way to think about how this is in terms of its multivariate normal interpretation. 
+
+$$
+\log(\vec{W}) \sim MVN(\vec{\beta_\alpha} + X\beta, \Sigma)
+$$
+
+Where $\Sigma$ is of the form:
+```{r, cache=TRUE}
+disp_mat = matrix(0, nrow = 393, ncol = 393)
+fill_from = 1
+for(s in unique(state_index)){
+  numcells = sum(s == state_index)
+  fill_to = numcells + fill_from - 1
+  fill = matrix(1, nrow = numcells, ncol = numcells)
+  disp_mat[fill_from:fill_to,fill_from:fill_to] = fill
+  fill_from = fill_from + numcells
+}
+for(i in 1:196){
+  wastop = disp_mat[i,]
+  wasbot = disp_mat[393-i,]
+  disp_mat[i,] = wasbot
+  disp_mat[393-i,] = wastop
+}
+SparseM::image(disp_mat, col = c("white", "black"))
+```
+
+The shaded cells are the non-zero entries of the covariance matrix. The blocks along the diagonals are states. Units within a state correlate with each other and share information. Units in different states do not. This is meant to account for the natural clustering of campaigns by state. 
+
+We have a total of 207 covariates from the ACS and FEC. Such a large dimension reduction to the GPS is unfortunate, but alternatives are scarce. 
 
 ```{r the_big_one}
 if(!file.exists("jags_samp.Rdata")){
@@ -150,21 +214,30 @@ for(i in sort(unique(quant_label))){
 }
 g_overlap = ggplot() +
   geom_density(data = full_data %>% filter(quant_label == 1),
-                    aes(x = gps, color = "W quantile 1")) +
+                    aes(x = gps, color = "W quantile 0-20%")) +
   geom_density(data = full_data %>% filter(quant_label == 2),
-                    aes(x = gps, color = "W quantile 2")) +
+                    aes(x = gps, color = "W quantile 20-40%")) +
   geom_density(data = full_data %>% filter(quant_label == 3),
-                    aes(x = gps, color = "W quantile 3")) +
+                    aes(x = gps, color = "W quantile 40-60%")) +
   geom_density(data = full_data %>% filter(quant_label == 4),
-                    aes(x = gps, color = "W quantile 4")) +
+                    aes(x = gps, color = "W quantile 60-80%")) +
   geom_density(data = full_data %>% filter(quant_label == 5),
-                    aes(x = gps, color = "W quantile 5")) +
+                    aes(x = gps, color = "W quantile 80-100%")) +
   ggtitle("GPS Overlap, 5 Quantiles") +
   theme_bw()
 ```
 
+##### Overlap
+
+To check overlap, we broke spending down into its 5 20% quantiles. The plot of GPS for each quantile is below. 
+
+```{r}
+g_overlap
+```
+
+We see that overlap is good amongst the middle 3 quantiles and also between the upper and lower quantiles. Overall overlap is decent until the GPS drops below 0.1. 
+
 ```{r, message=FALSE, warning=FALSE}
-library(lmtest)
 new_data = full_data
 names(new_data) = str_remove_all(names(new_data), ",|\\$|'|\\(|\\)")
 x_to_check = names(new_data)[-c(1,2,4,6,7,210:212)] 
@@ -209,6 +282,14 @@ wellbehaved_vars = x_to_check[-bad_balance]
 # balanced: industry(agriculture, health care, retail), race, sex, age, lower education
 ```
 
+Next, we check balance by fitting the model $X \sim W + GPS$ for each covariate $X$. We check the significance on the coefficient of $W$ and plot the density of the p-values.
+
+```{r}
+g_balance
+```
+
+The red line is 0.05. As we can see, there are some balance issues. Digging into the data, we can see which covariates are causing problems. Some unbalanced variables are those related to health insurance coverage, educational attainment, property value, poverty, and share of the economy held by the tech industry. A political scientist may note that all of these are correlated. On the other hand, race, sex, age, and share of agriculture/retail industry are balanced. This is a weakness of the GPS model. Many of the covariates correlate with each other, so imbalance in one implies imbalance in the others. 
+
 ```{r}
 dose_data = full_data %>% 
   select(prop_dem2018, Total_Disbursement, gps)
@@ -228,7 +309,17 @@ p = ncol(X)
 jags_list = list(y = y, X = X, p = p, n = n)
 ```
 
-```{r}
+#### Dose-Response Curve
+
+We fit the dose-response curve according to the following model. Let $Y_i$ denote the proportion of the vote obtained by the candidate of campaign $i$ with covariates $X_i$ and GPS $R_i$. $\Phi$ denotes the cdf of the standard normal.
+
+$$
+E\left[ \Phi^{-1}(Y_i) \mid W_i, R_i \right] = \alpha_0 + \alpha_1W_i + \alpha_2W_i^2 + \alpha_3R_i + \alpha_3R_i^2 + \alpha_5W_iR_i
+$$
+
+We fit it as a regression in JAGS.
+
+```{r, echo=TRUE}
 model = "model{
   for(i in 1:length(y)){
     y[i] ~ dnorm(mu[i], tau)
@@ -286,7 +377,7 @@ log_dose_response = data.frame(res = res.original, trt = trt.fin)
 dose_response.df = data.frame(res = res.original, trt = trt.original)
 ```
 
-```{r}
+```{r, cache=TRUE}
 dose_response = lapply(log(dose_data$W), function(w){
   dose_matrix = matrix(NA, nrow = nrow(dose_data), ncol = 6)
   dose_matrix[,1] = 1
@@ -299,6 +390,9 @@ dose_response = lapply(log(dose_data$W), function(w){
   response_points = apply(responses, 2, mean)
   range(response_points)
 })
+```
+
+```{r}
 min_res = unlist(lapply(dose_response, function(r){r[1]}))
 min_res.fin = min_res[order(trt)]
 max_res = unlist(lapply(dose_response, function(r){r[2]}))
@@ -316,7 +410,7 @@ log_curve = ggplot(data = dose_response.df) +
   geom_vline(xintercept = log(curve_changepoint), color = "red", lty = "dotted") +
   geom_vline(xintercept = log(lower_changepoint), color = "red", lty = "dotted") +
   geom_vline(xintercept = log(upper_changepoint), color = "red", lty = "dotted") +
-  geom_hline(yintercept =  0.50) +
+  geom_hline(yintercept =  0.50, color = "blue", lty = "dotted") +
   # ylim(0,1) + 
   # xlim(0,17) +
   ylab("Proportion of Vote") +
@@ -333,6 +427,27 @@ ori_curve = ggplot(data = dose_response.df) +
   xlab("Campaign Spending") +
   ggtitle("Dose-Response Curve") +
   theme_bw()
+```
+
+The observed dose-response curve is:
+
+```{r}
+log_curve
+```
+
+The measures of uncertainty in the curve come from posterior draws of the outcome model coefficients. 
+
+#### Future Work
+
+First and foremost, I would like to learn to conduct a sensitivity analysis on projects of this type. Then there is clearly the opportunity to use updated FEC data and certified vote counts in the analysis to determine how spending throughout the entire campaign affected the outcome. The FEC will get around to posting this data in their own good time, but at least we know it's coming. Loss to follow-up is not an option for campaigns. 
+
+#### List of District Covariates
+
+```{r}
+load("census_districts.Rdata")
+pres = new_states[[1]]
+pres1 = pres[,1:2]
+knitr::kable(pres1)
 ```
 
 <!--
