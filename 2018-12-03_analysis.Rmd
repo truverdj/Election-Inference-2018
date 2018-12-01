@@ -159,11 +159,38 @@ ggplot() +
   theme_bw()
 ```
 
-```{r}
-x_to_check = names(full_data)[-c(1,2,4,6,7,210:212)] 
-forms = lapply(x_to_check, function(x){
-  as.formula()
+```{r, message=FALSE, warning=FALSE}
+library(lmtest)
+new_data = full_data
+names(new_data) = str_remove_all(names(new_data), ",|\\$|'|\\(|\\)")
+x_to_check = names(new_data)[-c(1,2,4,6,7,210:212)] 
+models = lapply(seq_along(x_to_check), function(i){
+  f = x_to_check[[i]]
+  if(!i %in% 1:2){
+    Y = new_data[,f]
+    X = new_data[,c("Total_Disbursement", "gps")]
+    t = cbind(Y, X)
+    mod0 = lm(Y~Total_Disbursement + gps, data = t)
+    mod_summ = summary(mod0)
+    # mod1 = lm(Y~Total_Disbursement, data = t)
+    # mod_summ = summary(mod1)
+    # test = lrtest(mod0, mod1)
+    # p_value = test$`Pr(>Chisq)`[2]
+    p_value = mod_summ$coefficients["Total_Disbursement", 4]
+  } else {
+    p_value = c()
+  }
+  p_value
 })
+p_vals = unlist(models)
+ggplot(data = data.frame(p_vals)) +
+  geom_density(aes(x = p_vals)) +
+  geom_vline(xintercept = 0.05, color = "red") +
+  ggtitle("Balance by P-value") +
+  xlab("Significance") +
+  theme_bw()
+bad_balance = which(p_vals < 0.05) + 2
+# house value, education, type of industry, payroll of industry (which are highly correlated)
 ```
 
 <!--
