@@ -439,7 +439,7 @@ The measures of uncertainty in the curve come from posterior draws of the outcom
 
 #### Future Work
 
-First and foremost, I would like to learn to conduct a sensitivity analysis on projects of this type. Then there is clearly the opportunity to use updated FEC data and certified vote counts in the analysis to determine how spending throughout the entire campaign affected the outcome. The FEC will get around to posting this data in their own good time, but at least we know it's coming. Loss to follow-up is not an option for campaigns. 
+First and foremost, I would like to learn to conduct a sensitivity analysis on projects of this type. Then there is clearly the opportunity to use updated FEC data and certified vote counts in the analysis to determine how spending throughout the entire campaign affected the outcome. The FEC will get around to posting this data in their own good time, but at least we know it's coming. Loss to follow-up is not an option for campaigns. Lastly, I would like to take some measure of gerrymandering into account. Gerrymandering is not binary (gerrymandered for, gerrymandered against, not gerrymandered), so it would require some expert advice.
 
 #### List of District Covariates
 
