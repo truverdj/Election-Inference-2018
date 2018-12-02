@@ -202,7 +202,7 @@ n_chains = 2</code></pre>
 <h4>Dose-Response Curve</h4>
 <p>We fit the dose-response curve according to the following model. Let <span class="math inline">\(Y_i\)</span> denote the proportion of the vote obtained by the candidate of campaign <span class="math inline">\(i\)</span> with covariates <span class="math inline">\(X_i\)</span> and GPS <span class="math inline">\(R_i\)</span>. <span class="math inline">\(\Phi\)</span> denotes the cdf of the standard normal.</p>
 <p><span class="math display">\[
-E\left[ \Phi^{-1}(Y_i) \mid W_i, R_i \right] = \alpha_0 + \alpha_1W_i + \alpha_2W_i^2 + \alpha_3R_i + \alpha_3R_i^2 + \alpha_5W_iR_i
+E\left[ \Phi^{-1}(Y_i) \mid W_i, R_i \right] = \alpha_0 + \alpha_1\log(W_i) + \alpha_2\log(W_i)^2 + \alpha_3R_i + \alpha_3R_i^2 + \alpha_5\log(W_i)R_i
 \]</span></p>
 <p>We fit it as a regression in JAGS.</p>
 <pre class="r"><code>model = &quot;model{

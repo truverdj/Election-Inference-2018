@@ -314,7 +314,7 @@ jags_list = list(y = y, X = X, p = p, n = n)
 We fit the dose-response curve according to the following model. Let $Y_i$ denote the proportion of the vote obtained by the candidate of campaign $i$ with covariates $X_i$ and GPS $R_i$. $\Phi$ denotes the cdf of the standard normal.
 
 $$
-E\left[ \Phi^{-1}(Y_i) \mid W_i, R_i \right] = \alpha_0 + \alpha_1W_i + \alpha_2W_i^2 + \alpha_3R_i + \alpha_3R_i^2 + \alpha_5W_iR_i
+E\left[ \Phi^{-1}(Y_i) \mid W_i, R_i \right] = \alpha_0 + \alpha_1\log(W_i) + \alpha_2\log(W_i)^2 + \alpha_3R_i + \alpha_3R_i^2 + \alpha_5\log(W_i)R_i
 $$
 
 We fit it as a regression in JAGS.
