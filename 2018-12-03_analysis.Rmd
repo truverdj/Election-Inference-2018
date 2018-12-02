@@ -441,6 +441,21 @@ The measures of uncertainty in the curve come from posterior draws of the outcom
 
 First and foremost, I would like to learn to conduct a sensitivity analysis on projects of this type. Then there is clearly the opportunity to use updated FEC data and certified vote counts in the analysis to determine how spending throughout the entire campaign affected the outcome. The FEC will get around to posting this data in their own good time, but at least we know it's coming. Loss to follow-up is not an option for campaigns. Lastly, I would like to take some measure of gerrymandering into account. Gerrymandering is not binary (gerrymandered for, gerrymandered against, not gerrymandered), so it would require some expert advice.
 
+#### Curve not on Log Scale
+
+```{r}
+ori_curve = ggplot(data = dose_response.df) +
+  geom_line(aes(x = trt, y = res)) +
+  geom_point(aes(x = trt, y = res), pch = 16) +
+  geom_ribbon(aes(ymin = min, ymax = max, x = trt, fill = "Uncertainty"), 
+              alpha = 0.3) +
+  ylab("Proportion of Vote") +
+  xlab("Campaign Spending") +
+  ggtitle("Dose-Response Curve") +
+  theme_bw()
+ori_curve
+```
+
 #### List of District Covariates
 
 ```{r}
