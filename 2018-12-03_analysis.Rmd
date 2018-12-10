@@ -60,7 +60,7 @@ The data on campaign spending comes from Federal Election Commission (FEC) [fili
 
 Election results are from the Associated Press and retrieved via the [New York Times](https://www.nytimes.com/interactive/2018/11/06/us/elections/results-house-elections.html). The FEC will eventually have these results as well, but as of the time of this analysis, they do not. A definitive analysis will use the certified vote tallies of each district.
 
-Background characteristics of the congressional districts come from the American Community Survey (ACS) conducted by the [census bureau](https://www.census.gov/mycd/). See "List of District Covariates" section at the end for list of variables used in the model. 
+Background characteristics of the congressional districts come from the American Community Survey (ACS) conducted by the [census bureau](https://www.census.gov/mycd/). See "List of District Covariates Appendix" section at the end for list of variables used in the model. 
 
 Not all 435 districts are in this set. Reasons for exclusion include: no Democratic party campaign in the district, campaigns that did not have data up to the October 17 deadline (the FEC will force them to comply eventually), and Arizona district 2 because the .csv file on it looks like this 
 
@@ -437,9 +437,112 @@ log_curve
 
 The measures of uncertainty in the curve come from posterior draws of the outcome model coefficients. 
 
+#### Sensitivity
+
+Following the procedure graciously provided to me by Abbas Zaidi in an unpublished paper, we perform a sensitivity analysis. 
+
+We assume we have some unmeasured confounder $U \sim N(0,\sigma_u^2)$. In this case, we may want to think of money spent by groups outside the campaign, such as PACs and publicity given by the media. For an easy intuition, think of CNN running Donald Trump speeches in their entirety during the early days of his campaign. This type of support may influence both campaign spending and election outcome. For the sake of our finite existence in this life, we only explore impact on the outcome here. 
+
+That is, the outcome is now:
+$$
+E\left[ \Phi^{-1}(Y_i) \mid W_i, R_i \right] = \alpha_0 + \alpha_1\log(W_i) + \alpha_2\log(W_i)^2 + \alpha_3R_i + \alpha_3R_i^2 + \alpha_5\log(W_i)R_i + U_i L
+$$
+where $L$ is a sensitivity parameter controlling the influence of $U$. We test the values of $L \in \{ -1,-0.5,0.5,1 \}$ 
+
+```{r}
+model_u = "model{
+  for(i in 1:length(y)){
+    y[i] ~ dnorm(mu[i], tau)
+    mu[i] = inprod(beta[],X[i,]) + U[i]*L
+  }
+
+  for(i in 1:length(y)){
+    U[i] ~ dnorm(0,1)
+  }
+  
+  for(k in 1:p){
+    beta[k] ~ dnorm(0, 1/10000)
+  }
+  
+  sigma ~ dunif(0, 100)
+  tau = 1/(sigma * sigma)
+}"
+params = c("beta", "sigma", "U")
+n_burn = 1000
+n_iter = 5000
+```
+
+```{r}
+L.vec = c(-1,-0.5,0.5,1)
+if(!file.exists("sen_post.Rdata")){
+  sen_post = list()
+  for(i in seq_along(L.vec)){
+    L = L.vec[i]
+    jags_list = list(y = y, X = X, p = p, n = n, L = L)
+    m = jags.model(textConnection(model_u), data = jags_list,
+                n.chains = 1)
+    update(m, n.iter = n_burn)
+    sen_samp = coda.samples(m,n.iter = n_iter, variable.names = params)
+    sen_post[[i]] = sen_samp[[1]]
+  }
+  save(sen_post, file = "sen_post.Rdata")
+} else {
+  load("sen_post.Rdata")
+}
+```
+
+```{r}
+for(i in 1:4){
+  BETA = sen_post[[1]]
+  betas = apply(BETA, 2, mean)[393+1:6]
+  sigma = apply(BETA, 2, mean)[393+7]
+  U = apply(BETA, 2, mean)[1:393]
+  dose_response = lapply(log(dose_data$W), function(w){
+    dose_matrix = matrix(NA, nrow = nrow(dose_data), ncol = 6)
+    dose_matrix[,1] = 1
+    dose_matrix[,2] = w
+    dose_matrix[,3] = w^2
+    dose_matrix[,4] = dose_data$r
+    dose_matrix[,5] = dose_data$r^2
+    dose_matrix[,6] = w * dose_data$r
+    responses = dose_matrix %*% betas + U * L.vec[i]
+    response_point = mean(responses)
+    response_point
+  })
+  res = unlist(dose_response)
+  res.fin = res[order(trt)]
+  res.original = pnorm(res.fin)
+  dose_response.df[,paste0("sen",i)] = res.original
+}
+```
+
+```{r}
+ggplot(data = dose_response.df) +
+  geom_line(aes(x = log(trt), y = res)) +
+  geom_point(aes(x = log(trt), y = res), pch = 16) +
+  geom_ribbon(aes(ymin = min, ymax = max, x = log(trt), fill = "Uncertainty"), 
+              alpha = 0.3) +
+  geom_vline(xintercept = log(curve_changepoint), color = "red", lty = "dotted") +
+  geom_vline(xintercept = log(lower_changepoint), color = "red", lty = "dotted") +
+  geom_vline(xintercept = log(upper_changepoint), color = "red", lty = "dotted") +
+  geom_hline(yintercept =  0.50, color = "blue", lty = "dotted") +
+  geom_line(aes(x = log(trt), y = sen1, color = "L=-1")) +
+  geom_line(aes(x = log(trt), y = sen2, color = "L=-0.5")) +
+  geom_line(aes(x = log(trt), y = sen3, color = "L=0.5")) +
+  geom_line(aes(x = log(trt), y = sen4, color = "L=1")) +
+  # ylim(0,1) + 
+  # xlim(0,17) +
+  ylab("Proportion of Vote") +
+  xlab("Log(Campaign Spending)") +
+  ggtitle("Dose-Response Curves, with Sensitivity Parameters Changed") +
+  theme_bw()
+```
+
+Fortunately, these new curves with the sensitivity parameter adjusted fall within the uncertainty bound we already established.
+
 #### Future Work
 
-First and foremost, I would like to learn to conduct a sensitivity analysis on projects of this type. Then there is clearly the opportunity to use updated FEC data and certified vote counts in the analysis to determine how spending throughout the entire campaign affected the outcome. The FEC will get around to posting this data in their own good time, but at least we know it's coming. Loss to follow-up is not an option for campaigns. Lastly, I would like to take some measure of gerrymandering into account. Gerrymandering is not binary (gerrymandered for, gerrymandered against, not gerrymandered), so it would require some expert advice.
+There is clearly the opportunity to use updated FEC data and certified vote counts in the analysis to determine how spending throughout the entire campaign affected the outcome. The FEC will get around to posting this data in their own good time, but at least we know it's coming. Loss to follow-up is not an option for campaigns. Lastly, I would like to take some measure of gerrymandering into account. Gerrymandering is not binary (gerrymandered for, gerrymandered against, not gerrymandered), so it would require some expert advice.
 
 #### Curve not on Log Scale
 
@@ -456,7 +559,7 @@ ori_curve = ggplot(data = dose_response.df) +
 ori_curve
 ```
 
-#### List of District Covariates
+#### List of District Covariates Appendix
 
 ```{r}
 load("census_districts.Rdata")
